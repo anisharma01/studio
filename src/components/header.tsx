@@ -1,8 +1,6 @@
 'use client';
 
 import React from 'react';
-import { signOut } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
 import { useAuth } from '@/context/auth-context';
 import { Icons } from '@/components/icons';
 import { Button } from '@/components/ui/button';
@@ -31,7 +29,7 @@ export function Header({ onNewFolder, onAddFile, onAddLink, searchTerm, onSearch
   const { user } = useAuth();
 
   const handleSignOut = async () => {
-    await signOut(auth);
+    // This is a no-op because real authentication is disabled for this environment.
   };
   
   return (
