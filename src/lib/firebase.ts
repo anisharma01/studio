@@ -1,3 +1,8 @@
+// To enable Firebase, you must create a .env file with your project's credentials.
+// You can get these from the Firebase console:
+// Project Settings > General > Your apps > Web app > Firebase SDK snippet > Config
+
+/*
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
@@ -20,3 +25,4 @@ const storage = getStorage(app);
 const googleProvider = new GoogleAuthProvider();
 
 export { app, auth, db, storage, googleProvider };
+*/

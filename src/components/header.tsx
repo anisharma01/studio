@@ -2,8 +2,9 @@
 
 import React from 'react';
 import { useAuth } from '@/context/auth-context';
-import { signOut } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+// When you re-enable Firebase, uncomment the following lines:
+// import { signOut } from 'firebase/auth';
+// import { auth } from '@/lib/firebase';
 import { Icons } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,11 +33,15 @@ export function Header({ onNewFolder, onAddFile, onAddLink, searchTerm, onSearch
   const { user } = useAuth();
 
   const handleSignOut = async () => {
+    alert("Sign out is disabled in local-only mode.");
+    // When you re-enable Firebase, uncomment this block:
+    /*
     try {
       await signOut(auth);
     } catch (error) {
       console.error('Error signing out', error);
     }
+    */
   };
 
   return (

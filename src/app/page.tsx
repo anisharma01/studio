@@ -29,6 +29,8 @@ export default function Home() {
   const { user, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
   
+  // The useFileSystem hook now works with local data if userId is null,
+  // or with Firebase if a real user ID is provided.
   const {
     items,
     getFolderPath,
@@ -43,6 +45,8 @@ export default function Home() {
   const [dialogState, setDialogState] = useState<DialogState>(null);
 
   useEffect(() => {
+    // When using real Firebase auth, this will redirect unauthenticated users.
+    // In local mode, `user` will always be present, so this check won't trigger.
     if (!isAuthLoading && !user) {
       router.push('/login');
     }
@@ -72,6 +76,8 @@ export default function Home() {
     } else if (item.type === 'link') {
       window.open(item.url, '_blank', 'noopener,noreferrer');
     } else if (item.type === 'file') {
+      // In a real app, you would use a download URL from storage.
+      // For local demo, we just open a placeholder.
       const placeholderUrl = `https://placehold.co/800x600.png`;
       window.open(placeholderUrl, '_blank', 'noopener,noreferrer');
     }
@@ -82,6 +88,7 @@ export default function Home() {
     setDialogState(null);
     if(fullItem && (fullItem.type === 'file' || fullItem.type === 'link')) {
       const description = fullItem.type === 'file' ? `A file named "${fullItem.name}" of type ${fullItem.fileType}` : `A link to ${fullItem.url} named "${fullItem.name}"`;
+      // Use a timeout to ensure the previous dialog has fully closed.
       setTimeout(() => setDialogState({ type: 'suggest-tags', item: fullItem, description }), 100);
     }
   };
@@ -101,6 +108,8 @@ export default function Home() {
     setDialogState(null);
   };
 
+  // This will show a loader while the auth state is being determined.
+  // In local mode, this will be very brief.
   if (isAuthLoading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
