@@ -2,6 +2,8 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { signInWithPopup } from 'firebase/auth';
+import { auth, googleProvider } from '@/lib/firebase';
 import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
 import { Icons } from '@/components/icons';
@@ -18,7 +20,11 @@ export default function LoginPage() {
   }, [user, isLoading, router]);
 
   const handleSignIn = async () => {
-    // This is a no-op because real authentication is disabled for this environment.
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (error) {
+      console.error('Error signing in with Google', error);
+    }
   };
 
   if (isLoading || user) {

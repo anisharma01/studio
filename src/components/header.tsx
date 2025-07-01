@@ -26,10 +26,12 @@ interface HeaderProps {
 }
 
 export function Header({ onNewFolder, onAddFile, onAddLink, searchTerm, onSearchChange }: HeaderProps) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   const handleSignOut = async () => {
-    // This is a no-op because real authentication is disabled for this environment.
+    if (logout) {
+      await logout();
+    }
   };
   
   return (
@@ -107,15 +109,13 @@ export function Header({ onNewFolder, onAddFile, onAddLink, searchTerm, onSearch
                             <span>New Folder</span>
                         </DropdownMenuItem>
                     </DropdownMenuGroup>
+                    { user && <DropdownMenuSeparator className="md:hidden" /> }
                 </div>
                  { user && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={handleSignOut}>
-                          <LogOut className="mr-2 h-4 w-4" />
-                          <span>Log out</span>
-                      </DropdownMenuItem>
-                    </>
+                    <DropdownMenuItem onClick={handleSignOut}>
+                        <LogOut className="mr-2 h-4 w-4" />
+                        <span>Log out</span>
+                    </DropdownMenuItem>
                  )}
             </DropdownMenuContent>
         </DropdownMenu>

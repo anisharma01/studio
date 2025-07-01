@@ -85,11 +85,11 @@ export default function Home() {
     }
   };
 
-  const handleCreateItem = (newItem: Omit<FileSystemItem, "id" | "tags">) => {
+  const handleCreateItem = async (newItem: Omit<FileSystemItem, "id" | "tags">) => {
     if (!user) return;
-    const fullItem = addItem(newItem);
+    const fullItem = await addItem(newItem);
     setDialogState(null);
-    if(fullItem.type === 'file' || fullItem.type === 'link') {
+    if(fullItem && (fullItem.type === 'file' || fullItem.type === 'link')) {
       const description = fullItem.type === 'file' ? `A file named "${fullItem.name}" of type ${fullItem.fileType}` : `A link to ${fullItem.url} named "${fullItem.name}"`;
       setTimeout(() => setDialogState({ type: 'suggest-tags', item: fullItem, description }), 100);
     }
