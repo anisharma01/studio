@@ -1,6 +1,8 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import { useRouter } from 'next/navigation';
+import { useAuth } from "@/context/auth-context";
 import { Header } from "@/components/header";
 import { FileBrowser } from "@/components/file-browser";
 import { Breadcrumb } from "@/components/breadcrumb";
@@ -25,6 +27,9 @@ type DialogState =
   | null;
 
 export default function Home() {
+  const { user, isLoading: isAuthLoading } = useAuth();
+  const router = useRouter();
+  
   const {
     items,
     getItem,
@@ -33,11 +38,17 @@ export default function Home() {
     updateItem,
     deleteItem,
     isLoading: isFileSystemLoading,
-  } = useFileSystem();
+  } = useFileSystem(user?.uid);
   
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [dialogState, setDialogState] = useState<DialogState>(null);
+
+  useEffect(() => {
+    if (!isAuthLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, isAuthLoading, router]);
 
   const currentFolder = useMemo(
     () => (currentFolderId ? getItem(currentFolderId) : null),
@@ -75,6 +86,7 @@ export default function Home() {
   };
 
   const handleCreateItem = (newItem: Omit<FileSystemItem, "id" | "tags">) => {
+    if (!user) return;
     const fullItem = addItem(newItem);
     setDialogState(null);
     if(fullItem.type === 'file' || fullItem.type === 'link') {
@@ -84,21 +96,24 @@ export default function Home() {
   };
   
   const handleRenameItem = (item: Item, newName: string) => {
+    if (!user) return;
     updateItem(item.id, { name: newName });
     setDialogState(null);
   }
 
   const handleDeleteItem = (item: Item) => {
+    if (!user) return;
     deleteItem(item.id);
     setDialogState(null);
   }
 
   const handleUpdateTags = (itemId: string, tags: string[]) => {
+    if (!user) return;
     updateItem(itemId, { tags });
     setDialogState(null);
   };
   
-  if (isFileSystemLoading) {
+  if (isAuthLoading || !user) {
      return (
        <div className="flex flex-col h-screen bg-background">
          <div className="flex h-16 shrink-0 items-center justify-between border-b bg-card px-4 md:px-6">
@@ -108,11 +123,10 @@ export default function Home() {
            </div>
            <Skeleton className="h-8 w-64 hidden md:block" />
            <div className="flex items-center gap-2">
-               <div className="hidden md:flex items-center gap-2">
                 <Skeleton className="h-9 w-24" />
                 <Skeleton className="h-9 w-24" />
                 <Skeleton className="h-9 w-28" />
-              </div>
+              <Skeleton className="h-9 w-9 rounded-full ml-2" />
            </div>
          </div>
          <main className="flex-1 overflow-auto p-4 md:p-6 space-y-4">

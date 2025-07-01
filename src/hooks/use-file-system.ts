@@ -8,28 +8,35 @@ import {
   setDoc,
   writeBatch,
   onSnapshot,
+  getDocs,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { FileSystemItem, Item } from '@/lib/types';
 import { initialData } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 
-// A static user ID for demonstration without authentication
-const userId = 'local-user';
-let hasSeededForLocalUser = false;
+// A map to track which users have been seeded to avoid re-seeding on re-renders
+const seededUsers = new Set<string>();
 
-export function useFileSystem() {
+export function useFileSystem(userId?: string) {
   const [items, setItems] = useState<FileSystemItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
   const seedInitialData = useCallback(async (userIdToSeed: string) => {
-    if (hasSeededForLocalUser) return;
-    hasSeededForLocalUser = true;
-
-    const batch = writeBatch(db);
+    // Prevent re-seeding if already done for this user in this session
+    if (seededUsers.has(userIdToSeed)) return;
+    
     const userItemsRef = collection(db, `users/${userIdToSeed}/items`);
     
+    // Check if the user already has data in Firestore from a previous session
+    const existingDocs = await getDocs(userItemsRef);
+    if (!existingDocs.empty) {
+      seededUsers.add(userIdToSeed);
+      return; 
+    }
+
+    const batch = writeBatch(db);
     initialData.forEach((item) => {
       const docRef = doc(userItemsRef, item.id);
       batch.set(docRef, item);
@@ -37,6 +44,7 @@ export function useFileSystem() {
 
     try {
       await batch.commit();
+      seededUsers.add(userIdToSeed);
       toast({ title: 'Welcome!', description: 'We\'ve set up some example files for you.' });
     } catch (e) {
       console.error("Error seeding data:", e);
@@ -45,12 +53,18 @@ export function useFileSystem() {
   }, [toast]);
 
   useEffect(() => {
+    if (!userId) {
+      setIsLoading(false);
+      setItems([]);
+      return;
+    }
+
     setIsLoading(true);
     const userItemsRef = collection(db, `users/${userId}/items`);
     
-    const unsubscribe = onSnapshot(query(userItemsRef), (snapshot) => {
-      if (snapshot.empty) {
-        seedInitialData(userId);
+    const unsubscribe = onSnapshot(query(userItemsRef), async (snapshot) => {
+      if (snapshot.empty && !seededUsers.has(userId)) {
+        await seedInitialData(userId);
       }
       const userItems = snapshot.docs.map(doc => doc.data() as FileSystemItem);
       setItems(userItems);
@@ -62,7 +76,7 @@ export function useFileSystem() {
     });
 
     return () => unsubscribe();
-  }, [toast, seedInitialData]);
+  }, [userId, toast, seedInitialData]);
 
   const getItem = useCallback((id: string | null): FileSystemItem | null => {
     if (!id) return null;
@@ -70,6 +84,8 @@ export function useFileSystem() {
   }, [items]);
   
   const addItem = (newItemData: Omit<FileSystemItem, 'id' | 'tags'>): FileSystemItem => {
+    if (!userId) throw new Error("User is not authenticated");
+
     const newItem: FileSystemItem = {
       ...newItemData,
       id: crypto.randomUUID(),
@@ -78,6 +94,7 @@ export function useFileSystem() {
 
     const docRef = doc(db, `users/${userId}/items`, newItem.id);
     
+    // Optimistically update UI
     setItems(prevItems => [...prevItems, newItem]);
 
     setDoc(docRef, newItem)
@@ -87,6 +104,7 @@ export function useFileSystem() {
       .catch((e) => {
         console.error("Error adding document: ", e);
         toast({ title: 'Error', description: 'Could not create the item.', variant: 'destructive' });
+        // Rollback on error
         setItems(prevItems => prevItems.filter(item => item.id !== newItem.id));
       });
     
@@ -94,6 +112,7 @@ export function useFileSystem() {
   };
 
   const updateItem = (id: string, updates: Partial<Omit<FileSystemItem, 'id' | 'type' | 'parentId'>>) => {
+    if (!userId) return;
     const originalItem = items.find(item => item.id === id);
     if (!originalItem) return;
 
@@ -105,17 +124,16 @@ export function useFileSystem() {
     
     const docRef = doc(db, `users/${userId}/items`, id);
     setDoc(docRef, updates, { merge: true })
-      .then(() => {
-        toast({ title: 'Success', description: `Item has been updated.` });
-      })
       .catch((e) => {
         console.error("Error updating document: ", e);
         toast({ title: 'Error', description: 'Could not update the item.', variant: 'destructive' });
+        // Rollback on error
         setItems(prevItems => prevItems.map(item => item.id === id ? originalItem : item));
       });
   };
   
   const deleteItem = async (id: string) => {
+    if (!userId) return;
     const itemsBeforeDelete = [...items];
     const itemToDelete = items.find(item => item.id === id);
     if (!itemToDelete) return;

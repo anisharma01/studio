@@ -8,7 +8,6 @@ import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
 import { Icons } from '@/components/icons';
 import { Chrome } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
 
 export default function LoginPage() {
   const { user, isLoading } = useAuth();
@@ -35,7 +34,7 @@ export default function LoginPage() {
       <div className="flex h-screen w-screen items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
             <Icons.logo className="h-12 w-12 text-primary animate-pulse" />
-            <p className="text-muted-foreground">Loading...</p>
+            <p className="text-muted-foreground">Redirecting...</p>
         </div>
       </div>
     );
