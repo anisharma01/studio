@@ -1,20 +1,16 @@
 'use client';
 
 import React from 'react';
-import { useAuth } from '@/context/auth-context';
 import { Icons } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { FilePlus2, Link, FolderPlus, Search, LogOut, User, Menu } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { FilePlus2, Link, FolderPlus, Search, Menu } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuGroup,
-  DropdownMenuSeparator,
-  DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 
 interface HeaderProps {
@@ -26,14 +22,6 @@ interface HeaderProps {
 }
 
 export function Header({ onNewFolder, onAddFile, onAddLink, searchTerm, onSearchChange }: HeaderProps) {
-  const { user, logout } = useAuth();
-
-  const handleSignOut = async () => {
-    if (logout) {
-      await logout();
-    }
-  };
-  
   return (
     <header className="flex h-16 shrink-0 items-center justify-between border-b bg-card px-4 md:px-6">
       <div className="flex items-center gap-3">
@@ -68,58 +56,31 @@ export function Header({ onNewFolder, onAddFile, onAddLink, searchTerm, onSearch
             </Button>
         </div>
         
-        <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              { user ? (
-                <Button variant="ghost" size="icon" className="rounded-full">
-                    <Avatar className="h-8 w-8">
-                        <AvatarImage src={user?.photoURL ?? ''} alt={user?.displayName ?? 'User'} />
-                        <AvatarFallback>
-                            {user?.displayName ? user.displayName.charAt(0).toUpperCase() : <User className="h-4 w-4" />}
-                        </AvatarFallback>
-                    </Avatar>
-                </Button>
-              ) : (
-                <Button variant="ghost" size="icon">
-                  <Menu className="h-5 w-5" />
-                </Button>
-              )
-              }
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" align="end">
-                { user && (
-                  <>
-                    <DropdownMenuLabel>{user?.displayName}</DropdownMenuLabel>
-                    <DropdownMenuLabel className="font-normal text-xs text-muted-foreground -mt-2">{user?.email}</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                  </>
-                )}
-                <div className="md:hidden">
+        <div className="md:hidden">
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                        <Menu className="h-5 w-5" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-48" align="end">
                     <DropdownMenuGroup>
                         <DropdownMenuItem onClick={onAddFile}>
                             <FilePlus2 className="mr-2 h-4 w-4" />
                             <span>Add File</span>
                         </DropdownMenuItem>
-                         <DropdownMenuItem onClick={onAddLink}>
+                            <DropdownMenuItem onClick={onAddLink}>
                             <Link className="mr-2 h-4 w-4" />
                             <span>Add Link</span>
                         </DropdownMenuItem>
-                         <DropdownMenuItem onClick={onNewFolder}>
+                            <DropdownMenuItem onClick={onNewFolder}>
                             <FolderPlus className="mr-2 h-4 w-4" />
                             <span>New Folder</span>
                         </DropdownMenuItem>
                     </DropdownMenuGroup>
-                    { user && <DropdownMenuSeparator className="md:hidden" /> }
-                </div>
-                 { user && (
-                    <DropdownMenuItem onClick={handleSignOut}>
-                        <LogOut className="mr-2 h-4 w-4" />
-                        <span>Log out</span>
-                    </DropdownMenuItem>
-                 )}
-            </DropdownMenuContent>
-        </DropdownMenu>
-
+                </DropdownMenuContent>
+            </DropdownMenu>
+        </div>
       </div>
     </header>
   );
