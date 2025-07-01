@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/auth-context";
 import { Header } from "@/components/header";
 import { FileBrowser } from "@/components/file-browser";
 import { Breadcrumb } from "@/components/breadcrumb";
@@ -12,6 +14,7 @@ import { AddLinkDialog } from "@/components/dialogs/add-link-dialog";
 import { TagSuggestionDialog } from "@/components/dialogs/tag-suggestion-dialog";
 import { RenameItemDialog } from "@/components/dialogs/rename-item-dialog";
 import { DeleteItemDialog } from "@/components/dialogs/delete-item-dialog";
+import { auth } from "@/lib/firebase";
 
 type DialogState =
   | { type: "new-folder" }
@@ -23,6 +26,9 @@ type DialogState =
   | null;
 
 export default function Home() {
+  const { user, isLoading: isAuthLoading } = useAuth();
+  const router = useRouter();
+
   const {
     items,
     getItem,
@@ -30,11 +36,18 @@ export default function Home() {
     addItem,
     updateItem,
     deleteItem,
-    isLoading,
+    isLoading: isFileSystemLoading,
   } = useFileSystem();
+  
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [dialogState, setDialogState] = useState<DialogState>(null);
+
+  useEffect(() => {
+    if (!isAuthLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, isAuthLoading, router]);
 
   const currentFolder = useMemo(
     () => (currentFolderId ? getItem(currentFolderId) : null),
@@ -62,6 +75,12 @@ export default function Home() {
   const handleItemClick = (item: FileSystemItem) => {
     if (item.type === "folder") {
       setCurrentFolderId(item.id);
+    } else if (item.type === 'link') {
+      window.open(item.url, '_blank', 'noopener,noreferrer');
+    } else if (item.type === 'file') {
+      // This is a mock. In a real app, you'd have a file preview or download.
+      const placeholderUrl = `https://placehold.co/800x600.png`;
+      window.open(placeholderUrl, '_blank', 'noopener,noreferrer');
     }
   };
 
@@ -89,6 +108,14 @@ export default function Home() {
     setDialogState(null);
   };
 
+  const handleSignOut = async () => {
+    await auth.signOut();
+    router.push('/login');
+  };
+
+  if (isAuthLoading || !user) {
+    return null; // The AuthProvider shows a loading skeleton
+  }
 
   return (
     <div className="flex flex-col h-dvh bg-background text-foreground">
@@ -98,6 +125,8 @@ export default function Home() {
         onAddLink={() => setDialogState({ type: "add-link" })}
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
+        onSignOut={handleSignOut}
+        user={user}
       />
       <main className="flex-1 overflow-auto p-4 md:p-6 space-y-4">
         <Breadcrumb
@@ -109,7 +138,7 @@ export default function Home() {
           onItemClick={handleItemClick}
           onRenameRequest={(item) => setDialogState({ type: "rename", item })}
           onDeleteRequest={(item) => setDialogState({ type: "delete", item })}
-          isLoading={isLoading}
+          isLoading={isFileSystemLoading}
         />
       </main>
 
