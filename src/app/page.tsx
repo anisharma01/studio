@@ -92,7 +92,7 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col h-dvh bg-background text-foreground">
+    <div className="flex flex-col h-screen bg-background text-foreground">
       <Header
         onNewFolder={() => setDialogState({ type: "new-folder" })}
         onAddFile={() => setDialogState({ type: "add-file" })}
