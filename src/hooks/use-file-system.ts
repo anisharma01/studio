@@ -1,13 +1,8 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { initialData } from '@/lib/data';
-import type { FileSystemItem, Item } from '@/lib/types';
+import { useState, useCallback, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
-
-/*
-// This is the Firebase version of the hook.
-// To re-enable, comment out the local version below and uncomment this.
+import type { FileSystemItem, Item } from '@/lib/types';
 
 import {
   collection,
@@ -20,7 +15,6 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { useEffect } from 'react';
 
 export function useFileSystem(userId: string | null) {
   const [items, setItems] = useState<FileSystemItem[]>([]);
@@ -95,7 +89,7 @@ export function useFileSystem(userId: string | null) {
 
     try {
       const batch = writeBatch(db);
-      let itemsToDeleteIds = new Set<string>([id]);
+      const itemsToDeleteIds = new Set<string>([id]);
 
       if (itemToDelete.type === 'folder') {
         const findChildrenRecursive = (folderId: string) => {
@@ -138,75 +132,6 @@ export function useFileSystem(userId: string | null) {
     }
     return path;
   }, [getItem]);
-
-  return { items, getFolderPath, addItem, updateItem, deleteItem, isLoading };
-}
-*/
-
-
-// Local-only version of the hook for development without Firebase.
-export function useFileSystem(userId: string | null) {
-  const [items, setItems] = useState<FileSystemItem[]>(initialData);
-  const { toast } = useToast();
-
-  const addItem = async (newItemData: Omit<FileSystemItem, 'id' | 'tags'>) => {
-    const newId = Date.now().toString();
-    const newItem: FileSystemItem = {
-      ...newItemData,
-      id: newId,
-      tags: [],
-    } as FileSystemItem;
-
-    setItems(prevItems => [...prevItems, newItem]);
-    toast({ title: 'Success', description: `"${newItem.name}" has been created.` });
-    return newItem;
-  };
-
-  const updateItem = async (id: string, updates: Partial<Omit<FileSystemItem, 'id'>>) => {
-    setItems(prevItems =>
-      prevItems.map(item => (item.id === id ? { ...item, ...updates } : item))
-    );
-  };
-
-  const deleteItem = async (id: string) => {
-    const itemToDelete = items.find((item) => item.id === id);
-    if (!itemToDelete) return;
-
-    let itemsToDeleteIds = new Set<string>([id]);
-    if (itemToDelete.type === 'folder') {
-      const findChildrenRecursive = (folderId: string) => {
-        const children = items.filter((i) => i.parentId === folderId);
-        children.forEach((child) => {
-          itemsToDeleteIds.add(child.id);
-          if (child.type === 'folder') {
-            findChildrenRecursive(child.id);
-          }
-        });
-      };
-      findChildrenRecursive(id);
-    }
-
-    setItems(prevItems => prevItems.filter(item => !itemsToDeleteIds.has(item.id)));
-    toast({ title: 'Success', description: `"${itemToDelete.name}" and its contents have been deleted.` });
-  };
-  
-  const getItem = useCallback((id: string | null): FileSystemItem | null => {
-    if (!id) return null;
-    return items.find(item => item.id === id) || null;
-  }, [items]);
-
-  const getFolderPath = useCallback((itemId: string | null): Item[] => {
-    const path: Item[] = [];
-    let currentItem = getItem(itemId);
-    while (currentItem) {
-      path.unshift(currentItem);
-      currentItem = getItem(currentItem.parentId);
-    }
-    return path;
-  }, [getItem]);
-
-  // In local mode, loading is always instant.
-  const isLoading = false;
 
   return { items, getFolderPath, addItem, updateItem, deleteItem, isLoading };
 }
