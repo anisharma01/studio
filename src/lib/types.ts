@@ -15,6 +15,7 @@ export interface File extends Item {
   type: 'file';
   fileType: string;
   size: number;
+  downloadURL: string;
 }
 
 export interface Link extends Item {

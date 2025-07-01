@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import type { FileSystemItem, Item } from '@/lib/types';
-
+import { db, storage } from '@/lib/firebase';
 import {
   collection,
   query,
@@ -11,10 +11,14 @@ import {
   addDoc,
   updateDoc,
   doc,
-  deleteDoc,
   writeBatch,
 } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import {
+  ref as storageRef,
+  uploadBytes,
+  getDownloadURL,
+  deleteObject,
+} from 'firebase/storage';
 
 export function useFileSystem(userId: string | null) {
   const [items, setItems] = useState<FileSystemItem[]>([]);
@@ -56,13 +60,29 @@ export function useFileSystem(userId: string | null) {
     return () => unsubscribe();
   }, [userId, toast]);
 
-  const addItem = async (newItemData: Omit<FileSystemItem, 'id' | 'tags'>) => {
+  const addItem = async (
+    newItemData: Omit<FileSystemItem, 'id' | 'tags'>,
+    fileToUpload?: globalThis.File
+  ): Promise<FileSystemItem | null> => {
     if (!userId) return null;
     try {
+      // We explicitly type the data to be saved to ensure it matches Firestore expectations
+      let dataToSave: Omit<FileSystemItem, 'id'> = { ...newItemData, tags: [] };
+
+      if (newItemData.type === 'file' && fileToUpload) {
+        const sRef = storageRef(storage, `${userId}/${Date.now()}-${fileToUpload.name}`);
+        const uploadResult = await uploadBytes(sRef, fileToUpload);
+        const downloadURL = await getDownloadURL(uploadResult.ref);
+        
+        // Add the downloadURL to the data before saving
+        dataToSave = { ...dataToSave, downloadURL };
+      }
+
       const itemsCollection = collection(db, 'users', userId, 'items');
-      const docRef = await addDoc(itemsCollection, { ...newItemData, tags: [] });
+      const docRef = await addDoc(itemsCollection, dataToSave);
       toast({ title: 'Success', description: `"${newItemData.name}" has been created.` });
-      return { id: docRef.id, ...newItemData, tags: [] } as FileSystemItem;
+
+      return { id: docRef.id, ...dataToSave } as FileSystemItem;
     } catch (error) {
       console.error('Error adding item:', error);
       toast({ title: 'Error', description: 'Failed to create item.', variant: 'destructive' });
@@ -90,18 +110,25 @@ export function useFileSystem(userId: string | null) {
     try {
       const batch = writeBatch(db);
       const itemsToDeleteIds = new Set<string>([id]);
+      const filesToDelete: (FileSystemItem & { type: 'file' })[] = [];
+
+      const findChildrenRecursive = (folderId: string) => {
+        const children = items.filter((i) => i.parentId === folderId);
+        children.forEach((child) => {
+          itemsToDeleteIds.add(child.id);
+          if (child.type === 'file') {
+            filesToDelete.push(child);
+          }
+          if (child.type === 'folder') {
+            findChildrenRecursive(child.id);
+          }
+        });
+      };
 
       if (itemToDelete.type === 'folder') {
-        const findChildrenRecursive = (folderId: string) => {
-          const children = items.filter((i) => i.parentId === folderId);
-          children.forEach((child) => {
-            itemsToDeleteIds.add(child.id);
-            if (child.type === 'folder') {
-              findChildrenRecursive(child.id);
-            }
-          });
-        };
         findChildrenRecursive(id);
+      } else if (itemToDelete.type === 'file') {
+        filesToDelete.push(itemToDelete);
       }
       
       itemsToDeleteIds.forEach(deleteId => {
@@ -110,6 +137,19 @@ export function useFileSystem(userId: string | null) {
       });
       
       await batch.commit();
+
+      // Delete corresponding files from Firebase Storage
+      for (const file of filesToDelete) {
+        if (file.downloadURL) {
+          try {
+            const fileRef = storageRef(storage, file.downloadURL);
+            await deleteObject(fileRef);
+          } catch (storageError: any) {
+            // Log error but don't fail the entire operation if storage deletion fails
+            console.error(`Failed to delete file from storage: ${file.id}`, storageError);
+          }
+        }
+      }
 
       toast({ title: 'Success', description: `"${itemToDelete.name}" and its contents have been deleted.` });
     } catch (error) {

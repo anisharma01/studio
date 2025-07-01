@@ -72,15 +72,15 @@ export default function Home() {
     } else if (item.type === 'link') {
       window.open(item.url, '_blank', 'noopener,noreferrer');
     } else if (item.type === 'file') {
-      // In a real app, you would use a download URL from storage.
-      // For local demo, we just open a placeholder.
-      const placeholderUrl = `https://placehold.co/800x600.png`;
-      window.open(placeholderUrl, '_blank', 'noopener,noreferrer');
+      window.open(item.downloadURL, '_blank', 'noopener,noreferrer');
     }
   };
 
-  const handleCreateItem = async (newItem: Omit<FileSystemItem, "id" | "tags">) => {
-    const fullItem = await addItem(newItem);
+  const handleCreateItem = async (
+    newItem: Omit<FileSystemItem, "id" | "tags">,
+    file?: globalThis.File
+  ) => {
+    const fullItem = await addItem(newItem, file);
     setDialogState(null);
     if(fullItem && (fullItem.type === 'file' || fullItem.type === 'link')) {
       const description = fullItem.type === 'file' ? `A file named "${fullItem.name}" of type ${fullItem.fileType}` : `A link to ${fullItem.url} named "${fullItem.name}"`;

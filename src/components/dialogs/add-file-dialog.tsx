@@ -23,20 +23,21 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import type { File } from '@/lib/types';
+import type { File as FileType } from '@/lib/types';
 import { formatBytes } from '@/lib/utils';
 
+// Schema for form validation
 const formSchema = z.object({
   name: z.string().min(1, 'File name is required'),
-  fileType: z.string().min(1, 'File type is required (e.g., pdf, jpg)'),
-  size: z.coerce.number().min(0, 'Size must be a positive number'),
-  file: z.any().optional(), // We'll use this for the input, but not for submission
+  file: z
+    .custom<FileList>()
+    .refine((files) => files?.length > 0, 'A file is required.'),
 });
 
 interface AddFileDialogProps {
   currentFolderId: string | null;
   onClose: () => void;
-  onAdd: (file: Omit<File, 'id' | 'tags'>) => void;
+  onAdd: (fileMetadata: Omit<FileType, 'id' | 'tags' | 'downloadURL'>, fileObject: globalThis.File) => void;
 }
 
 export function AddFileDialog({ currentFolderId, onClose, onAdd }: AddFileDialogProps) {
@@ -44,33 +45,31 @@ export function AddFileDialog({ currentFolderId, onClose, onAdd }: AddFileDialog
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
-      fileType: '',
-      size: 0,
+      file: undefined,
     },
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    // We don't submit the 'file' field itself, just its metadata
-    const { file, ...metadata } = values;
-    onAdd({
-      ...metadata,
+    const fileObject = values.file[0];
+    const fileMetadata: Omit<FileType, 'id' | 'tags' | 'downloadURL'> = {
+      name: values.name,
       parentId: currentFolderId,
       type: 'file',
-    });
+      fileType: fileObject.type || 'unknown',
+      size: fileObject.size,
+    };
+    onAdd(fileMetadata, fileObject);
   }
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      form.setValue('name', file.name);
-      form.setValue('size', file.size);
-      const extension = file.name.split('.').pop() || '';
-      form.setValue('fileType', extension);
+      form.setValue('name', file.name, { shouldValidate: true });
+      form.setValue('file', event.target.files as FileList, { shouldValidate: true });
     }
   };
 
-  const nameValue = form.watch('name');
-  const sizeValue = form.watch('size');
+  const selectedFile = form.watch('file')?.[0];
 
   return (
     <Dialog open onOpenChange={onClose}>
@@ -78,8 +77,7 @@ export function AddFileDialog({ currentFolderId, onClose, onAdd }: AddFileDialog
         <DialogHeader>
           <DialogTitle>Add File</DialogTitle>
           <DialogDescription>
-            Choose a file to upload. Its metadata will be saved.
-            Actual file storage is not implemented in this demo.
+            Choose a file to upload to your CloudWeaver storage.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -91,18 +89,40 @@ export function AddFileDialog({ currentFolderId, onClose, onAdd }: AddFileDialog
                 <FormItem>
                   <FormLabel>File</FormLabel>
                   <FormControl>
-                    <Input type="file" onChange={handleFileChange} />
+                    <Input
+                      type="file"
+                      onChange={handleFileChange}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            
-            {nameValue && (
-              <div className="space-y-2 rounded-md border bg-muted/50 p-3 text-sm">
-                <p><strong>Name:</strong> {nameValue}</p>
-                <p><strong>Size:</strong> {formatBytes(sizeValue)}</p>
-              </div>
+
+            {selectedFile && (
+              <>
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>File Name</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="space-y-2 rounded-md border bg-muted/50 p-3 text-sm">
+                  <p>
+                    <strong>Type:</strong> {selectedFile.type || 'unknown'}
+                  </p>
+                  <p>
+                    <strong>Size:</strong> {formatBytes(selectedFile.size)}
+                  </p>
+                </div>
+              </>
             )}
 
             <DialogFooter>
@@ -111,7 +131,9 @@ export function AddFileDialog({ currentFolderId, onClose, onAdd }: AddFileDialog
                   Cancel
                 </Button>
               </DialogClose>
-              <Button type="submit" disabled={!nameValue}>Add File</Button>
+              <Button type="submit" disabled={!form.formState.isValid}>
+                Upload & Add File
+              </Button>
             </DialogFooter>
           </form>
         </Form>

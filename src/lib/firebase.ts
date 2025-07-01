@@ -4,12 +4,12 @@ import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  apiKey: "AIzaSyAYz46ekCx3CHmFi_w2ORWDLP-1hrM8gn8",
+  authDomain: "drive-clone-project-42a0a.firebaseapp.com",
+  projectId: "drive-clone-project-42a0a",
+  storageBucket: "drive-clone-project-42a0a.firebasestorage.app",
+  messagingSenderId: "521801667591",
+  appId: "1:521801667591:web:8a750780dce575c2e686a2"
 };
 
 // Initialize Firebase
