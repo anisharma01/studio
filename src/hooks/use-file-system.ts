@@ -20,24 +20,18 @@ export function useFileSystem() {
     return items.find(item => item.id === id) || null;
   }, [items]);
 
-  const addItem = async (newItemData: Omit<FileSystemItem, 'id' | 'tags'>): Promise<FileSystemItem | null> => {
-    try {
-      const newItem: FileSystemItem = {
-        ...newItemData,
-        id: generateId(),
-        tags: [],
-      };
-      setItems(prevItems => [...prevItems, newItem]);
-      toast({ title: 'Success', description: `"${newItem.name}" has been created.` });
-      return newItem;
-    } catch (error) {
-      console.error("Error adding item:", error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to create item.' });
-      return null;
-    }
+  const addItem = (newItemData: Omit<FileSystemItem, 'id' | 'tags'>): FileSystemItem => {
+    const newItem: FileSystemItem = {
+      ...newItemData,
+      id: generateId(),
+      tags: [],
+    };
+    setItems(prevItems => [...prevItems, newItem]);
+    toast({ title: 'Success', description: `"${newItem.name}" has been created.` });
+    return newItem;
   };
 
-  const updateItem = async (id: string, updates: Partial<Omit<FileSystemItem, 'id' | 'type' | 'parentId'>>) => {
+  const updateItem = (id: string, updates: Partial<Omit<FileSystemItem, 'id' | 'type' | 'parentId'>>) => {
      setItems(prevItems =>
       prevItems.map(item =>
         item.id === id ? { ...item, ...updates } : item
@@ -45,33 +39,28 @@ export function useFileSystem() {
     );
   };
 
-  const deleteItem = async (id: string) => {
+  const deleteItem = (id: string) => {
     const itemToDelete = items.find(item => item.id === id);
     if (!itemToDelete) return;
 
-    try {
-      let itemsToRemoveIds = new Set<string>([id]);
+    let itemsToRemoveIds = new Set<string>([id]);
 
-      // If it's a folder, find all nested children to delete them too
-      if (itemToDelete.type === 'folder') {
-        const findChildrenRecursive = (folderId: string) => {
-          const children = items.filter(i => i.parentId === folderId);
-          children.forEach(child => {
-            itemsToRemoveIds.add(child.id);
-            if (child.type === 'folder') {
-              findChildrenRecursive(child.id);
-            }
-          });
-        };
-        findChildrenRecursive(id);
-      }
-      
-      setItems(prevItems => prevItems.filter(item => !itemsToRemoveIds.has(item.id)));
-      toast({ title: 'Success', description: `"${itemToDelete.name}" and its contents have been deleted.` });
-    } catch(error) {
-       console.error("Error deleting item:", error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete item.' });
+    // If it's a folder, find all nested children to delete them too
+    if (itemToDelete.type === 'folder') {
+      const findChildrenRecursive = (folderId: string) => {
+        const children = items.filter(i => i.parentId === folderId);
+        children.forEach(child => {
+          itemsToRemoveIds.add(child.id);
+          if (child.type === 'folder') {
+            findChildrenRecursive(child.id);
+          }
+        });
+      };
+      findChildrenRecursive(id);
     }
+    
+    setItems(prevItems => prevItems.filter(item => !itemsToRemoveIds.has(item.id)));
+    toast({ title: 'Success', description: `"${itemToDelete.name}" and its contents have been deleted.` });
   };
   
   const getFolderPath = useCallback((itemId: string | null): Item[] => {

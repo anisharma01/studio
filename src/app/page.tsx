@@ -67,8 +67,8 @@ export default function Home() {
     }
   };
 
-  const handleCreateItem = async (newItem: Omit<FileSystemItem, "id" | "tags">) => {
-    const fullItem = await addItem(newItem);
+  const handleCreateItem = (newItem: Omit<FileSystemItem, "id" | "tags">) => {
+    const fullItem = addItem(newItem);
     setDialogState(null);
     if(fullItem && (fullItem.type === 'file' || fullItem.type === 'link')) {
       const description = fullItem.type === 'file' ? `A file named "${fullItem.name}" of type ${fullItem.fileType}` : `A link to ${fullItem.url} named "${fullItem.name}"`;
