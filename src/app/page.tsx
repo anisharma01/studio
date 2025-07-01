@@ -25,7 +25,6 @@ type DialogState =
 export default function Home() {
   const {
     items,
-    getItem,
     getFolderPath,
     addItem,
     updateItem,
@@ -39,7 +38,7 @@ export default function Home() {
 
   const displayedItems = useMemo(() => {
     const filteredByName = searchTerm
-      ? items.filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()) || item.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase())))
+      ? items.filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()) || (item.tags && item.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))))
       : items.filter((item) => item.parentId === currentFolderId);
     
     return [...filteredByName].sort((a, b) => {
@@ -61,7 +60,6 @@ export default function Home() {
     } else if (item.type === 'link') {
       window.open(item.url, '_blank', 'noopener,noreferrer');
     } else if (item.type === 'file') {
-      // This is a mock. In a real app, you'd have a file preview or download.
       const placeholderUrl = `https://placehold.co/800x600.png`;
       window.open(placeholderUrl, '_blank', 'noopener,noreferrer');
     }
