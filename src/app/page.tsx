@@ -1,6 +1,8 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/auth-context";
 import { Header } from "@/components/header";
 import { FileBrowser } from "@/components/file-browser";
 import { Breadcrumb } from "@/components/breadcrumb";
@@ -12,6 +14,7 @@ import { AddLinkDialog } from "@/components/dialogs/add-link-dialog";
 import { TagSuggestionDialog } from "@/components/dialogs/tag-suggestion-dialog";
 import { RenameItemDialog } from "@/components/dialogs/rename-item-dialog";
 import { DeleteItemDialog } from "@/components/dialogs/delete-item-dialog";
+import { Loader2 } from 'lucide-react';
 
 type DialogState =
   | { type: "new-folder" }
@@ -23,6 +26,9 @@ type DialogState =
   | null;
 
 export default function Home() {
+  const { user, isLoading: isAuthLoading } = useAuth();
+  const router = useRouter();
+  
   const {
     items,
     getFolderPath,
@@ -30,11 +36,17 @@ export default function Home() {
     updateItem,
     deleteItem,
     isLoading: isFileSystemLoading,
-  } = useFileSystem();
+  } = useFileSystem(user?.uid || null);
   
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [dialogState, setDialogState] = useState<DialogState>(null);
+
+  useEffect(() => {
+    if (!isAuthLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, isAuthLoading, router]);
 
   const displayedItems = useMemo(() => {
     const filteredByName = searchTerm
@@ -65,8 +77,8 @@ export default function Home() {
     }
   };
 
-  const handleCreateItem = (newItem: Omit<FileSystemItem, "id" | "tags">) => {
-    const fullItem = addItem(newItem);
+  const handleCreateItem = async (newItem: Omit<FileSystemItem, "id" | "tags">) => {
+    const fullItem = await addItem(newItem);
     setDialogState(null);
     if(fullItem && (fullItem.type === 'file' || fullItem.type === 'link')) {
       const description = fullItem.type === 'file' ? `A file named "${fullItem.name}" of type ${fullItem.fileType}` : `A link to ${fullItem.url} named "${fullItem.name}"`;
@@ -88,6 +100,14 @@ export default function Home() {
     updateItem(itemId, { tags });
     setDialogState(null);
   };
+
+  if (isAuthLoading || !user) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-screen bg-background text-foreground">
