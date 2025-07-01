@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { cn } from "@/lib/utils";
-import { AuthProvider } from "@/context/auth-context";
 
 export const metadata: Metadata = {
   title: "CloudWeaver",
@@ -34,9 +33,7 @@ export default function RootLayout({
           "min-h-screen bg-background font-sans"
         )}
       >
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+        {children}
         <Toaster />
       </body>
     </html>

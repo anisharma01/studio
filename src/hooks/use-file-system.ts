@@ -10,22 +10,25 @@ import {
   onSnapshot,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { useAuth } from '@/context/auth-context';
 import type { FileSystemItem, Item } from '@/lib/types';
 import { initialData } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 
-let hasCheckedForNewUser = false;
+// A static user ID for demonstration without authentication
+const userId = 'local-user';
+let hasSeededForLocalUser = false;
 
 export function useFileSystem() {
   const [items, setItems] = useState<FileSystemItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { user } = useAuth();
   const { toast } = useToast();
 
-  const seedInitialData = useCallback(async (userId: string) => {
+  const seedInitialData = useCallback(async (userIdToSeed: string) => {
+    if (hasSeededForLocalUser) return;
+    hasSeededForLocalUser = true;
+
     const batch = writeBatch(db);
-    const userItemsRef = collection(db, `users/${userId}/items`);
+    const userItemsRef = collection(db, `users/${userIdToSeed}/items`);
     
     initialData.forEach((item) => {
       const docRef = doc(userItemsRef, item.id);
@@ -42,34 +45,24 @@ export function useFileSystem() {
   }, [toast]);
 
   useEffect(() => {
-    if (user) {
-      if (!hasCheckedForNewUser) setIsLoading(true);
-      const userItemsRef = collection(db, `users/${user.uid}/items`);
-      
-      const unsubscribe = onSnapshot(query(userItemsRef), (snapshot) => {
-        if (!hasCheckedForNewUser && snapshot.empty) {
-          seedInitialData(user.uid);
-        }
-        hasCheckedForNewUser = true;
-        const userItems = snapshot.docs.map(doc => doc.data() as FileSystemItem);
-        setItems(userItems);
-        setIsLoading(false);
-      }, (error) => {
-          console.error("Error fetching user data:", error);
-          toast({ title: 'Error', description: 'Could not load your data from the cloud.', variant: 'destructive' });
-          setIsLoading(false);
-      });
-
-      return () => {
-        unsubscribe();
-        hasCheckedForNewUser = false;
+    setIsLoading(true);
+    const userItemsRef = collection(db, `users/${userId}/items`);
+    
+    const unsubscribe = onSnapshot(query(userItemsRef), (snapshot) => {
+      if (snapshot.empty) {
+        seedInitialData(userId);
       }
-    } else {
-      setItems([]);
+      const userItems = snapshot.docs.map(doc => doc.data() as FileSystemItem);
+      setItems(userItems);
       setIsLoading(false);
-      hasCheckedForNewUser = false;
-    }
-  }, [user, toast, seedInitialData]);
+    }, (error) => {
+        console.error("Error fetching user data:", error);
+        toast({ title: 'Error', description: 'Could not load your data from the cloud.', variant: 'destructive' });
+        setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [toast, seedInitialData]);
 
   const getItem = useCallback((id: string | null): FileSystemItem | null => {
     if (!id) return null;
@@ -77,18 +70,13 @@ export function useFileSystem() {
   }, [items]);
   
   const addItem = (newItemData: Omit<FileSystemItem, 'id' | 'tags'>): FileSystemItem => {
-    if (!user) {
-      toast({ title: 'Error', description: 'You must be logged in to create items.', variant: 'destructive' });
-      throw new Error("User not authenticated");
-    }
-
     const newItem: FileSystemItem = {
       ...newItemData,
       id: crypto.randomUUID(),
       tags: [],
     };
 
-    const docRef = doc(db, `users/${user.uid}/items`, newItem.id);
+    const docRef = doc(db, `users/${userId}/items`, newItem.id);
     
     setItems(prevItems => [...prevItems, newItem]);
 
@@ -106,10 +94,6 @@ export function useFileSystem() {
   };
 
   const updateItem = (id: string, updates: Partial<Omit<FileSystemItem, 'id' | 'type' | 'parentId'>>) => {
-     if (!user) {
-      toast({ title: 'Error', description: 'You must be logged in to update items.', variant: 'destructive' });
-      return;
-    }
     const originalItem = items.find(item => item.id === id);
     if (!originalItem) return;
 
@@ -119,7 +103,7 @@ export function useFileSystem() {
       )
     );
     
-    const docRef = doc(db, `users/${user.uid}/items`, id);
+    const docRef = doc(db, `users/${userId}/items`, id);
     setDoc(docRef, updates, { merge: true })
       .then(() => {
         toast({ title: 'Success', description: `Item has been updated.` });
@@ -132,11 +116,6 @@ export function useFileSystem() {
   };
   
   const deleteItem = async (id: string) => {
-    if (!user) {
-      toast({ title: 'Error', description: 'You must be logged in to delete items.', variant: 'destructive' });
-      return;
-    }
-
     const itemsBeforeDelete = [...items];
     const itemToDelete = items.find(item => item.id === id);
     if (!itemToDelete) return;
@@ -161,7 +140,7 @@ export function useFileSystem() {
     try {
       const batch = writeBatch(db);
       itemsToRemoveIds.forEach(itemId => {
-        batch.delete(doc(db, `users/${user.uid}/items`, itemId));
+        batch.delete(doc(db, `users/${userId}/items`, itemId));
       });
       await batch.commit();
       toast({ title: 'Success', description: `"${itemToDelete.name}" and its contents have been deleted.` });

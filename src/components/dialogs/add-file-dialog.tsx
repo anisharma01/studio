@@ -9,6 +9,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
   DialogClose,
 } from '@/components/ui/dialog';
@@ -23,11 +24,13 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import type { File } from '@/lib/types';
+import { formatBytes } from '@/lib/utils';
 
 const formSchema = z.object({
   name: z.string().min(1, 'File name is required'),
   fileType: z.string().min(1, 'File type is required (e.g., pdf, jpg)'),
   size: z.coerce.number().min(0, 'Size must be a positive number'),
+  file: z.any().optional(), // We'll use this for the input, but not for submission
 });
 
 interface AddFileDialogProps {
@@ -41,73 +44,74 @@ export function AddFileDialog({ currentFolderId, onClose, onAdd }: AddFileDialog
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
-      fileType: 'txt',
-      size: 1024
+      fileType: '',
+      size: 0,
     },
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
+    // We don't submit the 'file' field itself, just its metadata
+    const { file, ...metadata } = values;
     onAdd({
-      ...values,
+      ...metadata,
       parentId: currentFolderId,
       type: 'file',
     });
   }
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      form.setValue('name', file.name);
+      form.setValue('size', file.size);
+      const extension = file.name.split('.').pop() || '';
+      form.setValue('fileType', extension);
+    }
+  };
+
+  const nameValue = form.watch('name');
+  const sizeValue = form.watch('size');
 
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Add File</DialogTitle>
+          <DialogDescription>
+            Choose a file to upload. Its metadata will be saved.
+            Actual file storage is not implemented in this demo.
+          </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
-              name="name"
+              name="file"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>File Name</FormLabel>
+                  <FormLabel>File</FormLabel>
                   <FormControl>
-                    <Input placeholder="report.docx" {...field} />
+                    <Input type="file" onChange={handleFileChange} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-             <FormField
-              control={form.control}
-              name="fileType"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>File Type (extension)</FormLabel>
-                  <FormControl>
-                    <Input placeholder="pdf" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="size"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Size (in bytes)</FormLabel>
-                  <FormControl>
-                    <Input type="number" placeholder="1024" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            
+            {nameValue && (
+              <div className="space-y-2 rounded-md border bg-muted/50 p-3 text-sm">
+                <p><strong>Name:</strong> {nameValue}</p>
+                <p><strong>Size:</strong> {formatBytes(sizeValue)}</p>
+              </div>
+            )}
+
             <DialogFooter>
               <DialogClose asChild>
                 <Button type="button" variant="outline">
                   Cancel
                 </Button>
               </DialogClose>
-              <Button type="submit">Add File</Button>
+              <Button type="submit" disabled={!nameValue}>Add File</Button>
             </DialogFooter>
           </form>
         </Form>
